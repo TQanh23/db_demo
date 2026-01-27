@@ -1,69 +1,80 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import '../collections/todo.dart'; // Import model vừa tạo
+import '../models/task.dart';
 
 class IsarService {
-  late Future<Isar> db;
+  static Isar? _isar;
+  
+  // Getter an toàn để truy cập DB
+  Isar get isar => _isar!;
 
-  IsarService() {
-    db = openDB();
-  }
-
-  // 1. Mở Database
-  Future<Isar> openDB() async {
-    if (Isar.instanceNames.isEmpty) {
-      final dir = await getApplicationDocumentsDirectory();
-      // Mở DB với Schema (cấu trúc) của Todo
-      return await Isar.open(
-        [TodoSchema], 
-        directory: dir.path, 
-        inspector: true, // Cho phép debug
-      );
+  Future<void> init() async {
+    // Nếu Isar đã mở instance rồi thì dùng lại instance đầu tiên tìm thấy
+    if (Isar.instanceNames.isNotEmpty) {
+      _isar = Isar.getInstance();
+      return;
     }
-    return Future.value(Isar.getInstance());
+
+    final dir = await getApplicationDocumentsDirectory();
+    _isar = await Isar.open(
+      [TaskSchema],
+      directory: dir.path,
+    );
   }
 
-  // 2. CREATE: Thêm công việc
-  Future<void> addTodo(String title) async {
-    final isar = await db;
-    final newTodo = Todo()..title = title;
-    
-    // Mọi thao tác ghi/xóa phải nằm trong writeTxn
+  // 1. Create
+  Future<void> addTask(String title, int catId) async {
+    final newTask = Task()
+      ..title = title
+      ..categoryId = catId;
+      
     await isar.writeTxn(() async {
-      await isar.todos.put(newTodo);
+      await isar.tasks.put(newTask);
     });
   }
 
-  // 3. READ: Lấy toàn bộ danh sách (Dạng Stream để tự update UI)
-  Stream<List<Todo>> getAllTodos() async* {
-    final isar = await db;
-    // watch(fireImmediately: true) giúp UI render ngay lập tức khi mở app
-    yield* isar.todos.where().watch(fireImmediately: true);
-  }
-  
-  // 3.1 READ FILTER: Chỉ lấy công việc đã xong (Yêu cầu Demo)
-  Stream<List<Todo>> getCompletedTodos() async* {
-    final isar = await db;
-    yield* isar.todos.filter().isCompletedEqualTo(true).watch(fireImmediately: true);
+  // 2. Read (Future - Load data một lần)
+  Future<List<Task>> getAllTasks() async {
+    return await isar.tasks.where().sortByCreatedDateDesc().findAll();
   }
 
-  // 4. UPDATE: Đổi trạng thái (Checkbox)
-  Future<void> toggleTodo(int id) async {
-    final isar = await db;
+  // 3. Update
+  Future<void> toggleComplete(int id) async {
     await isar.writeTxn(() async {
-      final todo = await isar.todos.get(id);
-      if (todo != null) {
-        todo.isCompleted = !todo.isCompleted;
-        await isar.todos.put(todo); // put đè lên ID cũ = Update
+      final task = await isar.tasks.get(id);
+      if (task != null) {
+        task.isCompleted = !task.isCompleted;
+        await isar.tasks.put(task);
       }
     });
   }
 
-  // 5. DELETE: Xóa công việc
-  Future<void> deleteTodo(int id) async {
-    final isar = await db;
+  // 4. Delete
+  Future<void> deleteTask(int id) async {
     await isar.writeTxn(() async {
-      await isar.todos.delete(id);
+      await isar.tasks.delete(id);
     });
+  }
+  
+  // 5. Search (Future)
+  Future<List<Task>> searchTasks(String query) async {
+    if (query.isEmpty) {
+      return getAllTasks();
+    } else {
+      return await isar.tasks
+          .filter()
+          .titleContains(query, caseSensitive: false)
+          .sortByCreatedDateDesc()
+          .findAll();
+    }
+  }
+
+  // Demo Query: Filter Completed
+  Future<List<Task>> filterCompleted() async {
+    return await isar.tasks
+        .filter()
+        .isCompletedEqualTo(true)
+        .sortByCreatedDateDesc()
+        .findAll();
   }
 }
