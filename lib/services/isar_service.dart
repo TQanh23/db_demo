@@ -49,6 +49,16 @@ class IsarService {
     });
   }
 
+  Future<void> updateTaskTitle(int id, String newTitle) async {
+    await isar.writeTxn(() async {
+      final task = await isar.tasks.get(id);
+      if (task != null) {
+        task.title = newTitle;
+        await isar.tasks.put(task);
+      }
+    });
+  }
+
   // 4. Delete
   Future<void> deleteTask(int id) async {
     await isar.writeTxn(() async {

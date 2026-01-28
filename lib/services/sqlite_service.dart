@@ -78,6 +78,15 @@ class SqliteService {
     );
   }
 
+  Future<void> updateTaskTitle(int id, String newTitle) async {
+    await _db?.update(
+      'tasks',
+      {'title': newTitle},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // 4. Delete
   Future<void> deleteTask(int id) async {
     await _db?.delete('tasks', where: 'id = ?', whereArgs: [id]);

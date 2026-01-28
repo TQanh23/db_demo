@@ -200,10 +200,12 @@ class _HomePageState extends State<HomePage> {
         break;
       case 'SQLite':
         await widget.sqlite.addTask(title);
+        await widget.sqlite.logAction("Created SQLite Task: $title");
         _refreshSqlite(); 
         break;
       case 'Hive':
         await widget.hive.addTask(title);
+        await widget.sqlite.logAction("Created Hive Task: $title");
         break;
     }
     
@@ -237,6 +239,35 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))
+        ],
+      )
+    );
+  }
+
+  void _showEditDialog(String currentTitle, Function(String) onSave) {
+    final editController = TextEditingController(text: currentTitle);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Task'),
+        content: TextField(
+          controller: editController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter new title',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (editController.text.isNotEmpty) {
+                onSave(editController.text);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Update'),
+          ),
         ],
       )
     );
@@ -333,29 +364,29 @@ class _HomePageState extends State<HomePage> {
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
           ),
-          // Hive Search History Chips (Only show for Hive)
-          if (selectedDb == 'Hive' && widget.hive.getSearchHistory().isNotEmpty)
-             Container(
-              height: 40,
-              margin: const EdgeInsets.only(top: 8),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: widget.hive.getSearchHistory().map((term) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ActionChip(
-                      label: Text(term),
-                      onPressed: () {
-                        _searchController.text = term;
-                        _onSearchChanged(term);
-                      },
-                      avatar: const Icon(Icons.history, size: 16),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+          // Hive Search History Chips (Removed as requested)
+          // if (selectedDb == 'Hive' && widget.hive.getSearchHistory().isNotEmpty)
+          //    Container(
+          //     height: 40,
+          //     margin: const EdgeInsets.only(top: 8),
+          //     child: ListView(
+          //       scrollDirection: Axis.horizontal,
+          //       children: widget.hive.getSearchHistory().map((term) {
+          //         return Padding(
+          //           padding: const EdgeInsets.only(right: 8.0),
+          //           child: ActionChip(
+          //             label: Text(term),
+          //             onPressed: () {
+          //               _searchController.text = term;
+          //               _onSearchChanged(term);
+          //             },
+          //             avatar: const Icon(Icons.history, size: 16),
+          //             visualDensity: VisualDensity.compact,
+          //           ),
+          //         );
+          //       }).toList(),
+          //     ),
+          //   ),
         ],
       ),
     );
@@ -568,12 +599,20 @@ class _HomePageState extends State<HomePage> {
                 await widget.sqlite.logAction("Toggled Isar Task: ${task.title}");
                 _refreshIsar(); 
               },
+              onEdit: () {
+                _showEditDialog(task.title, (newTitle) async {
+                  await widget.isar.updateTaskTitle(task.id, newTitle);
+                  await widget.sqlite.logAction("Updated Isar Task: $newTitle");
+                  _refreshIsar();
+                });
+              },
               onDelete: () async {
                 await widget.isar.deleteTask(task.id);
                 await widget.sqlite.logAction("Deleted Isar Task: ${task.title}");
                 _refreshIsar(); 
               },
               tag: 'Isar',
+              tagIcon: Icons.rocket_launch,
               color: Colors.purple.shade100,
             );
           },
@@ -602,13 +641,23 @@ class _HomePageState extends State<HomePage> {
               created: date,
               onToggle: () async {
                 await widget.sqlite.toggleComplete(id, task['isCompleted']);
+                await widget.sqlite.logAction("Toggled SQLite Task: ${task['title']}");
                 _refreshSqlite();
+              },
+              onEdit: () {
+                _showEditDialog(task['title'], (newTitle) async {
+                  await widget.sqlite.updateTaskTitle(id, newTitle);
+                  await widget.sqlite.logAction("Updated SQLite Task: $newTitle");
+                  _refreshSqlite();
+                });
               },
               onDelete: () async {
                 await widget.sqlite.deleteTask(id);
+                await widget.sqlite.logAction("Deleted SQLite Task: ${task['title']}");
                 _refreshSqlite();
               },
               tag: 'SQLite',
+              tagIcon: Icons.table_chart,
               color: Colors.blue.shade100,
             );
           },
@@ -629,32 +678,46 @@ class _HomePageState extends State<HomePage> {
 
         if (filtered.isEmpty) return _buildEmptyState('Hive (Key-Value)');
 
-        return SliverPadding(
-          padding: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final task = filtered[index];
-                final key = task['key'] as int;
-                final isCompleted = task['isCompleted'] as bool;
-                final date = DateTime.parse(task['created']);
+          return SliverPadding(
+            padding: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final task = filtered[index];
+                  final key = task['key'] as int;
+                  final isCompleted = task['isCompleted'] as bool;
+                  final date = DateTime.parse(task['created']);
 
-                return _buildTaskItem(
-                  title: task['title'],
-                  isCompleted: isCompleted,
-                  created: date,
-                  onToggle: () => widget.hive.toggleComplete(key, task),
-                  onDelete: () => widget.hive.deleteTask(key),
-                  tag: 'Hive',
-                  color: Colors.orange.shade100,
-                );
-              },
-              childCount: filtered.length,
+                  return _buildTaskItem(
+                    title: task['title'],
+                    isCompleted: isCompleted,
+                    created: date,
+                    onToggle: () async {
+                       await widget.hive.toggleComplete(key, task);
+                       await widget.sqlite.logAction("Toggled Hive Task: ${task['title']}");
+                    },
+                    onEdit: () {
+                      _showEditDialog(task['title'], (newTitle) async {
+                        await widget.hive.updateTaskTitle(key, task, newTitle);
+                        await widget.sqlite.logAction("Updated Hive Task: $newTitle");
+                        // Hive ValueListenable will auto update UI
+                      });
+                    },
+                    onDelete: () async {
+                       await widget.hive.deleteTask(key);
+                       await widget.sqlite.logAction("Deleted Hive Task: ${task['title']}");
+                    },
+                    tag: 'Hive',
+                    tagIcon: Icons.inventory_2,
+                    color: Colors.orange.shade100,
+                  );
+                },
+                childCount: filtered.length,
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
   }
 
   Widget _buildEmptyState(String dbName) {
@@ -683,8 +746,10 @@ class _HomePageState extends State<HomePage> {
     required bool isCompleted,
     required DateTime created,
     required VoidCallback onToggle,
+    required VoidCallback onEdit,
     required VoidCallback onDelete,
     required String tag,
+    required IconData tagIcon,
     required Color color,
   }) {
     return Dismissible(
@@ -728,12 +793,34 @@ class _HomePageState extends State<HomePage> {
                   color: color,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(tag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(tagIcon, size: 12, color: Colors.black54),
+                    const SizedBox(width: 4),
+                    Text(tag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54)),
+                  ],
+                ),
               ),
               const Spacer(),
               Text(
                 '${created.hour}:${created.minute}',
                 style: TextStyle(color: Colors.grey[400], fontSize: 11),
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit, size: 20, color: Colors.grey),
+                tooltip: 'Update Task',
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete, size: 20, color: Colors.grey),
+                tooltip: 'Delete Task',
               ),
             ],
           ),

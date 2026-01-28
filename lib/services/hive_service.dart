@@ -80,6 +80,12 @@ class HiveService {
     await _tasks.put(key, dataToSave);
   }
 
+  Future<void> updateTaskTitle(int key, Map<String, dynamic> currentData, String newTitle) async {
+    currentData['title'] = newTitle;
+    final dataToSave = Map<String, dynamic>.from(currentData)..remove('key');
+    await _tasks.put(key, dataToSave);
+  }
+
   // 4. Delete
   Future<void> deleteTask(int key) async {
     await _tasks.delete(key);
