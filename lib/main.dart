@@ -34,6 +34,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late bool isDark;
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _MyAppState extends State<MyApp> {
   void _toggleTheme() async {
     await widget.hive.toggleTheme(!isDark);
     setState(() => isDark = !isDark);
-    ScaffoldMessenger.of(context).showSnackBar(
+    _scaffoldMessengerKey.currentState?.showSnackBar(
       const SnackBar(
         content: Text('Theme state saved to Hive Box!'),
         duration: Duration(milliseconds: 600),
@@ -56,6 +57,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Hybrid Todo',
       theme: ThemeData(
@@ -254,11 +256,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildInputArea(),
-              Expanded(child: _buildList()),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildInputArea()),
+              _buildList(),
             ],
           ),
         ),
@@ -544,67 +546,75 @@ class _HomePageState extends State<HomePage> {
       case 'Hive':
         return _buildHiveList();
       default:
-        return const Center(child: Text('Unknown DB'));
+        return const SliverToBoxAdapter(child: Center(child: Text('Unknown DB')));
     }
   }
 
   Widget _buildIsarList() {
     if (_isarTasks.isEmpty) return _buildEmptyState('Isar (NoSQL Document)');
     
-    return ListView.builder(
+    return SliverPadding(
       padding: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-      itemCount: _isarTasks.length,
-      itemBuilder: (context, index) {
-        final task = _isarTasks[index];
-        return _buildTaskItem(
-          title: task.title,
-          isCompleted: task.isCompleted,
-          created: task.createdDate,
-          onToggle: () async {
-            await widget.isar.toggleComplete(task.id);
-            await widget.sqlite.logAction("Toggled Isar Task: ${task.title}");
-            _refreshIsar(); 
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final task = _isarTasks[index];
+            return _buildTaskItem(
+              title: task.title,
+              isCompleted: task.isCompleted,
+              created: task.createdDate,
+              onToggle: () async {
+                await widget.isar.toggleComplete(task.id);
+                await widget.sqlite.logAction("Toggled Isar Task: ${task.title}");
+                _refreshIsar(); 
+              },
+              onDelete: () async {
+                await widget.isar.deleteTask(task.id);
+                await widget.sqlite.logAction("Deleted Isar Task: ${task.title}");
+                _refreshIsar(); 
+              },
+              tag: 'Isar',
+              color: Colors.purple.shade100,
+            );
           },
-          onDelete: () async {
-            await widget.isar.deleteTask(task.id);
-            await widget.sqlite.logAction("Deleted Isar Task: ${task.title}");
-            _refreshIsar(); 
-          },
-          tag: 'Isar',
-          color: Colors.purple.shade100,
-        );
-      },
+          childCount: _isarTasks.length,
+        ),
+      ),
     );
   }
 
   Widget _buildSqliteList() {
     if (_sqliteTasks.isEmpty) return _buildEmptyState('SQLite (Relational)');
 
-    return ListView.builder(
+    return SliverPadding(
       padding: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-      itemCount: _sqliteTasks.length,
-      itemBuilder: (context, index) {
-        final task = _sqliteTasks[index];
-        final id = task['id'] as int;
-        final isCompleted = (task['isCompleted'] as int) == 1;
-        final date = DateTime.parse(task['created']);
-        
-        return _buildTaskItem(
-          title: task['title'],
-          isCompleted: isCompleted,
-          created: date,
-          onToggle: () async {
-            await widget.sqlite.toggleComplete(id, task['isCompleted']);
-            _refreshSqlite();
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final task = _sqliteTasks[index];
+            final id = task['id'] as int;
+            final isCompleted = (task['isCompleted'] as int) == 1;
+            final date = DateTime.parse(task['created']);
+            
+            return _buildTaskItem(
+              title: task['title'],
+              isCompleted: isCompleted,
+              created: date,
+              onToggle: () async {
+                await widget.sqlite.toggleComplete(id, task['isCompleted']);
+                _refreshSqlite();
+              },
+              onDelete: () async {
+                await widget.sqlite.deleteTask(id);
+                _refreshSqlite();
+              },
+              tag: 'SQLite',
+              color: Colors.blue.shade100,
+            );
           },
-          onDelete: () async {
-            await widget.sqlite.deleteTask(id);
-            _refreshSqlite();
-          },
-          tag: 'SQLite',
-          color: Colors.blue.shade100,
-        );
-      },
+          childCount: _sqliteTasks.length,
+        ),
+      ),
     );
   }
 
@@ -619,44 +629,51 @@ class _HomePageState extends State<HomePage> {
 
         if (filtered.isEmpty) return _buildEmptyState('Hive (Key-Value)');
 
-        return ListView.builder(
+        return SliverPadding(
           padding: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) {
-            final task = filtered[index];
-            final key = task['key'] as int;
-            final isCompleted = task['isCompleted'] as bool;
-            final date = DateTime.parse(task['created']);
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final task = filtered[index];
+                final key = task['key'] as int;
+                final isCompleted = task['isCompleted'] as bool;
+                final date = DateTime.parse(task['created']);
 
-            return _buildTaskItem(
-              title: task['title'],
-              isCompleted: isCompleted,
-              created: date,
-              onToggle: () => widget.hive.toggleComplete(key, task),
-              onDelete: () => widget.hive.deleteTask(key),
-              tag: 'Hive',
-              color: Colors.orange.shade100,
-            );
-          },
+                return _buildTaskItem(
+                  title: task['title'],
+                  isCompleted: isCompleted,
+                  created: date,
+                  onToggle: () => widget.hive.toggleComplete(key, task),
+                  onDelete: () => widget.hive.deleteTask(key),
+                  tag: 'Hive',
+                  color: Colors.orange.shade100,
+                );
+              },
+              childCount: filtered.length,
+            ),
+          ),
         );
       },
     );
   }
 
   Widget _buildEmptyState(String dbName) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.storage, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'No tasks in $dbName',
-            style: TextStyle(color: Colors.grey[500]),
-          ),
-          if (selectedDb == 'Isar' && searchQuery.isNotEmpty)
-             const Text('Search query active', style: TextStyle(fontSize: 12, color: Colors.purple)),
-        ],
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.storage, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              'No tasks in $dbName',
+              style: TextStyle(color: Colors.grey[500]),
+            ),
+            if (selectedDb == 'Isar' && searchQuery.isNotEmpty)
+               const Text('Search query active', style: TextStyle(fontSize: 12, color: Colors.purple)),
+          ],
+        ),
       ),
     );
   }
