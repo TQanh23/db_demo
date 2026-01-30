@@ -4,7 +4,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'services/hive_service.dart';
 import 'services/sqlite_service.dart';
 import 'services/isar_service.dart';
+import 'services/benchmark_service.dart';
 import 'models/task.dart';
+import 'screens/benchmark_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,15 +20,30 @@ void main() async {
   final isarService = IsarService();
   await isarService.init();
 
-  runApp(MyApp(hive: hiveService, sqlite: sqliteService, isar: isarService));
+  final benchmarkService = BenchmarkService(hiveService, isarService, sqliteService);
+  await benchmarkService.init();
+
+  runApp(MyApp(
+    hive: hiveService, 
+    sqlite: sqliteService, 
+    isar: isarService,
+    benchmarkService: benchmarkService,
+  ));
 }
 
 class MyApp extends StatefulWidget {
   final HiveService hive;
   final SqliteService sqlite;
   final IsarService isar;
+  final BenchmarkService benchmarkService;
   
-  const MyApp({super.key, required this.hive, required this.sqlite, required this.isar});
+  const MyApp({
+    super.key, 
+    required this.hive, 
+    required this.sqlite, 
+    required this.isar,
+    required this.benchmarkService,
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -95,6 +112,7 @@ class _MyAppState extends State<MyApp> {
         sqlite: widget.sqlite,
         isar: widget.isar,
         hive: widget.hive,
+        benchmarkService: widget.benchmarkService,
       ),
     );
   }
@@ -106,6 +124,7 @@ class HomePage extends StatefulWidget {
   final SqliteService sqlite;
   final IsarService isar;
   final HiveService hive;
+  final BenchmarkService benchmarkService;
 
   const HomePage({
     super.key,
@@ -114,6 +133,7 @@ class HomePage extends StatefulWidget {
     required this.sqlite,
     required this.isar,
     required this.hive,
+    required this.benchmarkService,
   });
 
   @override
@@ -307,29 +327,44 @@ class _HomePageState extends State<HomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Local Databases',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: widget.isDark ? Colors.white : Colors.black87,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Local Databases',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: widget.isDark ? Colors.white : Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    'Buổi 06 - Group 5 Demo',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
+                    Text(
+                      'Buổi 06 - Group 5 Demo',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               
               // --- DYNAMIC FEATURE & THEME BUTTONS ---
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton.filledTonal(
+                    onPressed: () {
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (_) => BenchmarkScreen(benchmarkService: widget.benchmarkService))
+                      );
+                    },
+                    icon: const Icon(Icons.speed, color: Colors.red),
+                    tooltip: 'Benchmark Arena',
+                  ),
+                  const SizedBox(width: 8),
                   _buildFeatureButton(),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(

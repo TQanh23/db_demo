@@ -1,6 +1,7 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/task.dart';
+import '../models/benchmark_task.dart';
 
 class IsarService {
   static Isar? _isar;
@@ -17,7 +18,7 @@ class IsarService {
 
     final dir = await getApplicationDocumentsDirectory();
     _isar = await Isar.open(
-      [TaskSchema],
+      [TaskSchema, BenchmarkTaskSchema],
       directory: dir.path,
     );
   }

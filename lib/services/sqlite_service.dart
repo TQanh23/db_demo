@@ -4,6 +4,8 @@ import 'dart:async';
 
 class SqliteService {
   static Database? _db;
+  Database get db => _db!;
+
 
   Future<void> init() async {
     if (_db != null) return;
@@ -24,6 +26,11 @@ class SqliteService {
         );
       },
       version: 1,
+    );
+    
+    // Ensure benchmark table exists (lazy migration for demo)
+    await _db!.execute(
+      'CREATE TABLE IF NOT EXISTS benchmark_tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT, isCompleted INTEGER, created TEXT)',
     );
     
     if ((await getCategories()).isEmpty) {
