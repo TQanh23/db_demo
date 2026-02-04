@@ -2,6 +2,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/task.dart';
 import '../models/benchmark_task.dart';
+import '../collections/todo.dart';
 
 class IsarService {
   static Isar? _isar;
@@ -18,10 +19,42 @@ class IsarService {
 
     final dir = await getApplicationDocumentsDirectory();
     _isar = await Isar.open(
-      [TaskSchema, BenchmarkTaskSchema],
+      [TaskSchema, BenchmarkTaskSchema, TodoSchema],
       directory: dir.path,
     );
   }
+
+  // --- Methods for TodoScreen (Demo) ---
+
+  // Stream-based read for TodoScreen
+  Stream<List<Todo>> getAllTodos() {
+    return isar.todos.where().watch(fireImmediately: true);
+  }
+
+  Future<void> addTodo(String title) async {
+    final newTodo = Todo()..title = title;
+    await isar.writeTxn(() async {
+      await isar.todos.put(newTodo);
+    });
+  }
+
+  Future<void> toggleTodo(int id) async {
+    await isar.writeTxn(() async {
+      final todo = await isar.todos.get(id);
+      if (todo != null) {
+        todo.isCompleted = !todo.isCompleted;
+        await isar.todos.put(todo);
+      }
+    });
+  }
+
+  Future<void> deleteTodo(int id) async {
+    await isar.writeTxn(() async {
+      await isar.todos.delete(id);
+    });
+  }
+
+  // --- Methods for HomePage ---
 
   // 1. Create
   Future<void> addTask(String title, int catId) async {

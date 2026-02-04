@@ -532,7 +532,7 @@ class _HomePageState extends State<HomePage> {
               // Database Selector Dropdown with Custom Icons
               Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),

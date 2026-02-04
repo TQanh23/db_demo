@@ -9,11 +9,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:db_demo/main.dart';
+import 'package:db_demo/services/hive_service.dart';
+import 'package:db_demo/services/sqlite_service.dart';
+import 'package:db_demo/services/isar_service.dart';
+import 'package:db_demo/services/benchmark_service.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    final hive = HiveService();
+    final sqlite = SqliteService();
+    final isar = IsarService();
+    final benchmark = BenchmarkService(hive, isar, sqlite);
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(
+      hive: hive,
+      sqlite: sqlite,
+      isar: isar,
+      benchmarkService: benchmark,
+    ));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);
