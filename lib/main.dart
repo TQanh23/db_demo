@@ -64,7 +64,7 @@ class _MyAppState extends State<MyApp> {
     setState(() => isDark = !isDark);
     _scaffoldMessengerKey.currentState?.showSnackBar(
       const SnackBar(
-        content: Text('Theme state saved to Hive Box!'),
+        content: Text('Theme state saved!'),
         duration: Duration(milliseconds: 600),
         behavior: SnackBarBehavior.floating,
       ),

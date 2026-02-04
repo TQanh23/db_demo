@@ -1,7 +1,9 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HiveService {
+  late SharedPreferences _prefs;
   static const String settingsBox = 'settings';
   static const String taskBox = 'hive_tasks';
   static const String historyBoxName = 'search_history';
@@ -11,6 +13,7 @@ class HiveService {
     await Hive.openBox(settingsBox);
     await Hive.openBox(taskBox);
     await Hive.openBox(historyBoxName);
+    _prefs = await SharedPreferences.getInstance();
   }
 
   // --- Search History (List Cache Demo) ---
@@ -32,10 +35,10 @@ class HiveService {
   }
 
   // --- Settings (Theme) ---
-  bool get isDarkMode => Hive.box(settingsBox).get('darkMode', defaultValue: false);
+  bool get isDarkMode => _prefs.getBool('darkMode') ?? false;
   
   Future<void> toggleTheme(bool value) async {
-    await Hive.box(settingsBox).put('darkMode', value);
+    await _prefs.setBool('darkMode', value);
   }
 
   // --- Tasks CRUD (Key-Value Style) ---
