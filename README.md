@@ -1,16 +1,40 @@
 # db_demo
 
-A new Flutter project.
+## 🛠️ Bắt đầu
 
-## Getting Started
+### Yêu cầu hệ thống
 
-This project is a starting point for a Flutter application.
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (phiên bản ^3.10.7)
+- Android Studio / VS Code với tiện ích mở rộng Flutter
+- Trình giả lập hoặc thiết bị vật lý
 
-A few resources to get you started if this is your first Flutter project:
+### Cài đặt
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. **Clone repository:**
+   ```bash
+   git clone https://github.com/TQanh23/db_demo.git
+   cd db_demo
+   ```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. **Cài đặt các dependency:**
+   ```bash
+   flutter pub get
+   ```
+
+3. **Tạo Code tự động (Code Generation):**
+   Dự án này sử dụng code generation cho schema của Isar và Hive. Bạn **phải** chạy lệnh này trước khi build:
+   ```bash
+   dart run build_runner build --delete-conflicting-outputs
+   ```
+
+4. **Chạy ứng dụng:**
+   ```bash
+   flutter run
+   ```
+
+## 📂 Cấu trúc dự án
+
+- `lib/services/`: Chứa các bản thực thi của từng dịch vụ cơ sở dữ liệu.
+- `lib/models/`: Các model dữ liệu được sử dụng để benchmark.
+- `lib/screens/`: Các màn hình UI, bao gồm dashboard đo hiệu năng.
+- `lib/collections/`: Các định nghĩa collection dành riêng cho Isar.
