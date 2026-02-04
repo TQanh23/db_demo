@@ -6,7 +6,7 @@
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (phiên bản ^3.10.7)
 - Android Studio / VS Code với tiện ích mở rộng Flutter
-- Trình giả lập hoặc thiết bị vật lý
+- Trình giả lập hoặc thiết bị vật lý 
 
 ### Cài đặt
 
